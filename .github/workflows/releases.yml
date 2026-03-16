@@ -1,5 +1,5 @@
-name: Build releases
 
+name: Build releases
 
 on: [push]
     
@@ -48,16 +48,56 @@ jobs:
       run: |
           release_name="App-${{ matrix.target }}"
           # Add nuget sources
-          dotnet nuget add source https://www.myget.org/F/sixlabors/api/v3/index.json
+          dotnet nuget add source https://www.myget.org
           # Build everything
-            dotnet publish ./VDF.GUI/VDF.GUI.csproj -c Release -v q --self-contained -r "${{ matrix.target }}" -o "outputFolder"
-          # Pack files
-          if [ "${{ matrix.target }}" == "win-x64" ]; then
-            # Pack to zip for Windows
+          dotnet publish ./VDF.GUI/VDF.GUI.csproj -c Release -v q --self-contained -r "${{ matrix.target }}" -o "outputFolder"
+          
+          # Logic for macOS .app bundling
+          if [[ "${{ matrix.target }}" == "osx-"* ]]; then
+            APP_NAME="VideoDuplicateFinder.app"
+            mkdir -p "$APP_NAME/Contents/MacOS"
+            mkdir -p "$APP_NAME/Contents/Resources"
+            
+            cp -r outputFolder/* "$APP_NAME/Contents/MacOS/"
+            
+            if [ -f "AppIcon.icns" ]; then
+              cp "AppIcon.icns" "$APP_NAME/Contents/Resources/"
+            fi
+            
+            cat <<EOF > "$APP_NAME/Contents/Info.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>VDF.GUI</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.0x90d.videoduplicatefinder</string>
+    <key>CFBundleName</key>
+    <string>VideoDuplicateFinder</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>3.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.13</string>
+</dict>
+</plist>
+EOF
+            tar czvf "${release_name}.tar.gz" "$APP_NAME"
+            rm -rf "$APP_NAME"
+
+          # Original Windows logic
+          elif [ "${{ matrix.target }}" == "win-x64" ]; then
             7z a -tzip "${release_name}.zip" "./outputFolder/*"
+          
+          # Original Linux logic
           else
             tar czvf "${release_name}.tar.gz" "outputFolder"
           fi
+          
           # Delete output directory
           rm -r "outputFolder"
           
@@ -71,5 +111,3 @@ jobs:
             Last build based on ${{ steps.vars.outputs.sha_short }}
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
