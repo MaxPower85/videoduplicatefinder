@@ -18,11 +18,11 @@ jobs:
             target: win-x64
             name: win-x64
           - kind: macOS
-            os: macos-latest
+            os: macos-13
             target: osx-x64
             name: osx-x64
           - kind: macOSarm64
-            os: macos-latest
+            os: macos-14
             target: osx-arm64
             name: osx-arm64
           - kind: linuxarm64
@@ -52,41 +52,60 @@ jobs:
           dotnet publish ./VDF.GUI/VDF.GUI.csproj -c Release -v q --self-contained -r "${{ matrix.target }}" -o "outputFolder"
           
           # Logic for macOS .app bundling
-            if [[ "${{ matrix.target }}" == "osx-"* ]]; then
-            APP_NAME="VideoDuplicateFinder.app"
-            mkdir -p "$APP_NAME/Contents/MacOS"
-            mkdir -p "$APP_NAME/Contents/Resources"
+          if [[ "${{ matrix.target }}" == "osx-"* ]]; then
+          APP_NAME="VideoDuplicateFinder.app"
             
-            # Use ditto with HFS compression for all app components
-            ditto --hfsCompression outputFolder/ "$APP_NAME/Contents/MacOS/"
-            ditto --hfsCompression "Info.plist" "$APP_NAME/Contents/Info.plist"
-            ditto --hfsCompression "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
+          # Create the bundle structure
+          mkdir -p "$APP_NAME/Contents/MacOS"
+          mkdir -p "$APP_NAME/Contents/Frameworks"
+          mkdir -p "$APP_NAME/Contents/Resources"
+          mkdir -p "dmgStaging"
+            
+          # Install FFmpeg and the library bundling tool
+          brew install ffmpeg dylibbundler
 
-            # FFmpeg download logic (separated parts)
-            FF_DOMAIN="https://ffmpeg.martin-riedl.de"
-            FF_PATH="/redirect/latest/macos"
+          # Copy and strip binaries for smaller size
+          cp $(brew --prefix)/bin/ffmpeg "$APP_NAME/Contents/MacOS/ffmpeg"
+          cp $(brew --prefix)/bin/ffprobe "$APP_NAME/Contents/MacOS/ffprobe"
+          strip -x "$APP_NAME/Contents/MacOS/ffmpeg"
+          strip -x "$APP_NAME/Contents/MacOS/ffprobe"
             
-            if [[ "${{ matrix.target }}" == "osx-arm64" ]]; then
-              ARCH="arm64"
-            else
-              ARCH="amd64"
-            fi
+          # Bundle all .dylib dependencies into the app
+          dylibbundler -od -b -x "$APP_NAME/Contents/MacOS/ffmpeg" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
+          dylibbundler -od -b -x "$APP_NAME/Contents/MacOS/ffprobe" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
+            
+          # Strip libraries to save space
+          for lib in "$APP_NAME/Contents/Frameworks/"*.dylib; do
+            strip -x "$lib"
+          done
+            
+          # Bundle the .NET app and resources using ditto (HFS compression)
+          ditto --hfsCompression outputFolder/ "$APP_NAME/Contents/MacOS/"
+          [ -f "Info.plist" ] && ditto --hfsCompression "Info.plist" "$APP_NAME/Contents/Info.plist"
+          [ -f "macOS_AppIcon.icns" ] && ditto --hfsCompression "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
+            
+          # Ensure everything is executable
+          chmod +x "$APP_NAME/Contents/MacOS/VDF.GUI"
+          chmod +x "$APP_NAME/Contents/MacOS/ffmpeg"
+          chmod +x "$APP_NAME/Contents/MacOS/ffprobe"
 
-            # Download and extract ffmpeg/ffprobe
-            curl -L "${FF_DOMAIN}${FF_PATH}/${ARCH}/release/ffmpeg.zip" -o ffmpeg.zip
-            curl -L "${FF_DOMAIN}${FF_PATH}/${ARCH}/release/ffprobe.zip" -o ffprobe.zip
+          # Ad-hoc sign everything (Must be done AFTER stripping and chmod)
+          find "$APP_NAME/Contents" -type f \( -name "*.dylib" -or -perm +111 \) -exec codesign --force --sign - {} \;
+          codesign --force --sign - "$APP_NAME"
             
-            unzip -o ffmpeg.zip -d "$APP_NAME/Contents/MacOS/"
-            unzip -o ffprobe.zip -d "$APP_NAME/Contents/MacOS/"
-            
-            # Set executable permissions (Crucial for macOS)
-            chmod +x "$APP_NAME/Contents/MacOS/VDF.GUI"
-            chmod +x "$APP_NAME/Contents/MacOS/ffmpeg"
-            chmod +x "$APP_NAME/Contents/MacOS/ffprobe"
-            
-            # Final archive and cleanup
-            tar czvf "${release_name}.tar.gz" "$APP_NAME"
-            rm -rf "$APP_NAME" ffmpeg.zip ffprobe.zip AppIcon.icns
+          # Prepare DMG content
+          cp -R "$APP_NAME" "dmgStaging/"
+          ln -s /Applications "dmgStaging/Applications"
+
+          # Create ReadMe.txt using printf to avoid YAML indentation errors
+          printf "If the app doesn't open (Gatekeeper warning):\n1. Open Terminal\n2. Type: xattr -d com.apple.quarantine \n3. Add one space, then drag this .dmg here\n4. Press Enter and re-open the .dmg\n" > "dmgStaging/README.txt"
+
+          # Create the final UDZO compressed .dmg
+          hdiutil create -volname "VideoDuplicateFinder" -srcfolder "dmgStaging" -ov -format UDZO "${release_name}.dmg"
+
+          # Cleanup
+          rm -rf "$APP_NAME" "dmgStaging"
+
 
           # Original Windows logic
           elif [ "${{ matrix.target }}" == "win-x64" ]; then
