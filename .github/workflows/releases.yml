@@ -65,9 +65,9 @@ jobs:
           brew install ffmpeg dylibbundler
 
           # Copy and strip binaries for smaller size
-          cp $(brew --prefix)/bin/ffmpeg "$APP_NAME/Contents/MacOS/ffmpeg"
-          cp $(brew --prefix)/bin/ffprobe "$APP_NAME/Contents/MacOS/ffprobe"
+          ditto $(brew --prefix)/bin/ffmpeg "$APP_NAME/Contents/MacOS/ffmpeg"
           chmod +w "$APP_NAME/Contents/MacOS/ffmpeg"
+          ditto $(brew --prefix)/bin/ffprobe "$APP_NAME/Contents/MacOS/ffprobe"
           chmod +w "$APP_NAME/Contents/MacOS/ffprobe"
           strip -x "$APP_NAME/Contents/MacOS/ffmpeg"
           strip -x "$APP_NAME/Contents/MacOS/ffprobe"
