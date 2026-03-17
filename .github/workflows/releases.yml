@@ -18,11 +18,11 @@ jobs:
             target: win-x64
             name: win-x64
           - kind: macOS
-            os: windows-latest
+            os: macos-latest
             target: osx-x64
             name: osx-x64
           - kind: macOSarm64
-            os: windows-latest
+            os: macos-latest
             target: osx-arm64
             name: osx-arm64
           - kind: linuxarm64
@@ -52,20 +52,41 @@ jobs:
           dotnet publish ./VDF.GUI/VDF.GUI.csproj -c Release -v q --self-contained -r "${{ matrix.target }}" -o "outputFolder"
           
           # Logic for macOS .app bundling
-          if [[ "${{ matrix.target }}" == "osx-"* ]]; then
+            if [[ "${{ matrix.target }}" == "osx-"* ]]; then
             APP_NAME="VideoDuplicateFinder.app"
             mkdir -p "$APP_NAME/Contents/MacOS"
             mkdir -p "$APP_NAME/Contents/Resources"
             
-            cp -r outputFolder/* "$APP_NAME/Contents/MacOS/"
-            cp "Info.plist" "$APP_NAME/Contents/Info.plist"
+            # Use ditto with HFS compression for all app components
+            ditto --hfsCompression outputFolder/ "$APP_NAME/Contents/MacOS/"
+            ditto --hfsCompression "Info.plist" "$APP_NAME/Contents/Info.plist"
+            ditto --hfsCompression "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
+
+            # FFmpeg download logic (separated parts)
+            FF_DOMAIN="https://ffmpeg.martin-riedl.de"
+            FF_PATH="/redirect/latest/macos"
             
-            if [ -f "macOS_AppIcon.icns" ]; then
-              cp "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
+            if [[ "${{ matrix.target }}" == "osx-arm64" ]]; then
+              ARCH="arm64"
+            else
+              ARCH="amd64"
             fi
+
+            # Download and extract ffmpeg/ffprobe
+            curl -L "${FF_DOMAIN}${FF_PATH}/${ARCH}/release/ffmpeg.zip" -o ffmpeg.zip
+            curl -L "${FF_DOMAIN}${FF_PATH}/${ARCH}/release/ffprobe.zip" -o ffprobe.zip
             
+            unzip -o ffmpeg.zip -d "$APP_NAME/Contents/MacOS/"
+            unzip -o ffprobe.zip -d "$APP_NAME/Contents/MacOS/"
+            
+            # Set executable permissions (Crucial for macOS)
+            chmod +x "$APP_NAME/Contents/MacOS/VDF.GUI"
+            chmod +x "$APP_NAME/Contents/MacOS/ffmpeg"
+            chmod +x "$APP_NAME/Contents/MacOS/ffprobe"
+            
+            # Final archive and cleanup
             tar czvf "${release_name}.tar.gz" "$APP_NAME"
-            rm -rf "$APP_NAME"
+            rm -rf "$APP_NAME" ffmpeg.zip ffprobe.zip
 
           # Original Windows logic
           elif [ "${{ matrix.target }}" == "win-x64" ]; then
