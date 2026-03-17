@@ -99,6 +99,7 @@ jobs:
           
           # Delete output directory
           rm -r "outputFolder"
+          rm AppIcon.icns
           
     - name: Publish
       uses: softprops/action-gh-release@v2
