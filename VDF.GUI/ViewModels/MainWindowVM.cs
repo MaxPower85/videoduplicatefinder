@@ -1071,18 +1071,28 @@ namespace VDF.GUI.ViewModels {
 
 			if (GetSelectedDuplicateItem() is not DuplicateItemVM currentItem) return;
 			try {
-				if (CoreUtils.IsWindows) {
-					Process.Start(new ProcessStartInfo("explorer.exe", $"/select, \"{currentItem.ItemInfo.Path}\"") {
-						UseShellExecute = true
-					});
-				}
-				else {
-					Process.Start(new ProcessStartInfo {
-						FileName = currentItem.ItemInfo.Folder,
-						UseShellExecute = true,
-						Verb = "open"
-					});
-				}
+					if (CoreUtils.IsWindows) {
+					    // Windows: Explorer with file selection
+					    Process.Start(new ProcessStartInfo("explorer.exe", $"/select, \"{currentItem.ItemInfo.Path}\"") {
+					        UseShellExecute = true
+					    });
+					}
+					else if (CoreUtils.IsMacOS) {
+					    // macOS: Open Finder and select the file (open -R)
+					    Process.Start("open", $"-R \"{currentItem.ItemInfo.Path}\"");
+					}
+					else if (CoreUtils.IsLinux || CoreUtils.IsFreeBSD || CoreUtils.IsBSD) {
+					    // Linux and BSD: Use DBus to select the file in the file manager (Nautilus, Dolphin, etc.)
+					    Process.Start("dbus-send", $"--session --dest=org.freedesktop.FileManager1 --type=method_call /org/freedesktop/FileManager1 org.freedesktop.FileManager1.ShowItems array:string:\"file://{currentItem.ItemInfo.Path}\" string:\"\"");
+					}
+					else {
+					    // Fallback: Just open the folder without selecting the file
+					    Process.Start(new ProcessStartInfo {
+					        FileName = currentItem.ItemInfo.Folder,
+					        UseShellExecute = true,
+					        Verb = "open"
+					    });
+					}
 			}
 			catch (Exception ex) {
 				await MessageBoxService.Show(string.Format(App.Lang["Message.OpenFilesFailed"], ex.Message));
