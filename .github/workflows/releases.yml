@@ -92,7 +92,7 @@ jobs:
           chmod +x "$APP_NAME/Contents/MacOS/ffprobe"
 
           # Ad-hoc sign everything (Must be done AFTER stripping and chmod)
-          find "$APP_NAME/Contents" -type f \( -name "*.dylib" -or -perm +111 \) -exec codesign --force --sign - {} \;
+          find "$APP_NAME/Contents" -type f \( -name "*.dylib" -or -name "*.dll" -or -perm +111 \) -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP_NAME"
             
           # Prepare DMG content
