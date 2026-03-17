@@ -1515,7 +1515,7 @@ Non-Windows setup:
 							var keeper = keepByGroup.TryGetValue(dub.ItemInfo.GroupId, out var k) ? k : null;
 							if (keeper == null)
 								throw new Exception($"Cannot create symlink for '{dub.ItemInfo.Path}' because all items in this group are selected");
-							File.Delete(dub.ItemInfo.Path); // <--- delete the file before creating a symbolic link in its place
+
 							File.CreateSymbolicLink(dub.ItemInfo.Path, keeper.ItemInfo.Path);
 							freedBytes += dub.ItemInfo.SizeLong;
 						}
@@ -1532,6 +1532,16 @@ Non-Windows setup:
 							if (result != 0)
 								throw new Exception($"SHFileOperation returned: {result:X}");
 							freedBytes += dub.ItemInfo.SizeLong;
+						}
+						else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && !permanently) {
+					        var keeper = keepByGroup.TryGetValue(dub.ItemInfo.GroupId, out var k) ? k : null;
+					        if (keeper != null) {
+					            if (File.Exists(dub.ItemInfo.Path)) {
+					                File.Delete(dub.ItemInfo.Path);
+					            }
+					            File.CreateSymbolicLink(dub.ItemInfo.Path, keeper.ItemInfo.Path);
+					            freedBytes += dub.ItemInfo.SizeLong;
+							}
 						}
 						else {
 							File.Delete(dub.ItemInfo.Path);
