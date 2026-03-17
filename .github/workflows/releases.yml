@@ -61,7 +61,7 @@ jobs:
             cp "Info.plist" "$APP_NAME/Contents/Info.plist"
             
             if [ -f "AppIcon.icns" ]; then
-              cp "AppIcon.icns" "$APP_NAME/Contents/Resources/"
+              cp "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
             fi
             
             tar czvf "${release_name}.tar.gz" "$APP_NAME"
