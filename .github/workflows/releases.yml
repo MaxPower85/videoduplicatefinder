@@ -60,7 +60,7 @@ jobs:
             cp -r outputFolder/* "$APP_NAME/Contents/MacOS/"
             cp "Info.plist" "$APP_NAME/Contents/Info.plist"
             
-            if [ -f "AppIcon.icns" ]; then
+            if [ -f "macOS_AppIcon.icns" ]; then
               cp "macOS_AppIcon.icns" "$APP_NAME/Contents/Resources/AppIcon.icns"
             fi
             
