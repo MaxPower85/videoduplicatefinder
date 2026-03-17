@@ -86,7 +86,7 @@ jobs:
             
             # Final archive and cleanup
             tar czvf "${release_name}.tar.gz" "$APP_NAME"
-            rm -rf "$APP_NAME" ffmpeg.zip ffprobe.zip
+            rm -rf "$APP_NAME" ffmpeg.zip ffprobe.zip AppIcon.icns
 
           # Original Windows logic
           elif [ "${{ matrix.target }}" == "win-x64" ]; then
@@ -99,7 +99,6 @@ jobs:
           
           # Delete output directory
           rm -r "outputFolder"
-          rm AppIcon.icns
           
     - name: Publish
       uses: softprops/action-gh-release@v2
