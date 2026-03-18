@@ -19,14 +19,14 @@ using System.Text.Json;
 using ProtoBuf;
 
 namespace VDF.Core.Utils {
-	static class DatabaseUtils {
+	public static class DatabaseUtils {
 		internal static HashSet<FileEntry> Database => DbWrapper.Entries;
 		internal static int DbVersion => DbWrapper.Version;
 		
 		static DatabaseWrapper DbWrapper = new();
 		internal static string? CustomDatabaseFolder;
 
-		static string BaseDatabaseFolder {
+		public static string BaseDatabaseFolder {
 			get {
 				// 1. Priority: User-defined custom folder (if set in settings)
 				if (!string.IsNullOrEmpty(CustomDatabaseFolder) && Directory.Exists(CustomDatabaseFolder))
@@ -61,8 +61,8 @@ namespace VDF.Core.Utils {
 			}
 		}
 
-		static string CurrentDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles.db");
-		static string TempDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles_new.db");
+		public static string CurrentDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles.db");
+		public static string TempDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles_new.db");
 
 		internal static bool LoadDatabase() {
 
