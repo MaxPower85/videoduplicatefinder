@@ -116,17 +116,13 @@ jobs:
           ln -s /Applications "dmgStaging/Applications"
         
           # Create ReadMe.txt
-          printf "If the app doesn't open (Gatekeeper warning):\n\n1. Open Terminal\n2. Paste: xattr -d com.apple.quarantine \n3. That command should be followed by one space character \n4. Eject the mounted Disk Image and drag & drop the .dmg file there \n5. You'll get a path to the .dmg file and then you can press Return to remove the extended quarantine attributes\n\nAfter that you can reopen the Disk Image and run the .app or drag it to the Applications folder" > "dmgStaging/README_Instructions.txt"
+          printf "If the app doesn't open (Gatekeeper warning):\n\n1. Open Terminal\n2. Paste: xattr -d com.apple.quarantine \n3. That command should be followed by one space character \n4. Eject the mounted Disk Image and drag & drop the .dmg file there \n5. You'll get a path to the .dmg file and then you can press Return to remove the extended quarantine attributes\n\nAfter that you can reopen the Disk Image and run the .app or drag it to the Applications folder" > "dmgStaging/ReadMe.txt"
 
-        
+
           # Create the final UDZO compressed .dmg
-          
           # Prepare DMG content with temporary name for ReadMe
           ditto --hfsCompression "$APP_NAME" "dmgStaging/$APP_NAME"
-          ln -s /Applications "dmgStaging/Applications"
-          
-          # Use 'z' prefix so 'arranged by name' puts it last
-          printf "If the app doesn't open...\n" > "dmgStaging/zReadMe.txt"
+          ln -s /Applications "dmgStaging/zApplications"
 
           # Create a temporary READ-WRITE DMG
           hdiutil create -volname "VideoDuplicateFinder" -srcfolder "dmgStaging" -ov -format UDRW "temp.dmg"
@@ -145,8 +141,8 @@ jobs:
                   set the bounds of container window to currentBounds
                   set arrangement of icon view options of container window to arranged by name
                   
-                  # Rename it back to README.txt after it's already positioned last
-                  set name of file \"zReadMe.txt\" to \"README.txt\"
+                  # Rename it back to Applications after it's already positioned last
+                  set name of alias file \"zApplications\" to \"Applications\"
                   
                   update items of container window
                   delay 1
