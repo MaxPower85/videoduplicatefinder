@@ -112,8 +112,10 @@ jobs:
           codesign --force --sign - "$APP_NAME"
 
           
-          # Prepare DMG content with a temporary shortcut name (to be renamed later, so it would be last)
+          # Prepare DMG content
           ditto --hfsCompression "$APP_NAME" "dmgStaging/$APP_NAME"
+
+          # Create shortcut with 'z' to force it to the last position
           ln -s /Applications "dmgStaging/zApplications"
         
           # Create ReadMe.txt
@@ -133,8 +135,14 @@ jobs:
                   set current view of container window to icon view
                   set icon size of icon view options of container window to 140
                   set currentBounds to {400, 100, 950, 450} -- Slightly narrower for better centering
+                  set toolbar visible of container window to false
+                  set sidebar width of container window to 0
+                  set statusbar visible of container window to false
                   set the bounds of container window to currentBounds
                   set arrangement of icon view options of container window to arranged by name
+                  delay 2
+                  set arrangement of icon view options of container window to not arranged
+                  delay 1
                   
                   # Rename it back to Applications after it's already positioned last
                   set name of alias file \"zApplications\" to \"Applications\"
