@@ -47,7 +47,10 @@ using VDF.GUI.Views;
 namespace VDF.GUI.ViewModels {
 	public partial class MainWindowVM : ReactiveObject {
 
-		
+		public ScanEngine Scanner { get; } = new();
+		public ObservableCollection<string> LogItems { get; } = new();
+		List<HashSet<string>> GroupBlacklist = new();
+
 		// 1. New code for the backup.scanresults location
 		private string BaseAppDataFolder {
 			get {
