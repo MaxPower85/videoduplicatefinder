@@ -49,10 +49,46 @@ namespace VDF.GUI.ViewModels {
 		public ScanEngine Scanner { get; } = new();
 		public ObservableCollection<string> LogItems { get; } = new();
 		List<HashSet<string>> GroupBlacklist = new();
-		public string BackupScanResultsFile =>
-			Directory.Exists(SettingsFile.Instance.CustomDatabaseFolder) ?
-			Path.Combine(SettingsFile.Instance.CustomDatabaseFolder, "backup.scanresults") :
-			Path.Combine(CoreUtils.CurrentFolder, "backup.scanresults");
+
+
+		// 1. New code for the backup.scanresults location
+		private string BaseAppDataFolder {
+			get {
+				// 1. Priority: User-defined custom folder
+				if (!string.IsNullOrEmpty(SettingsFile.Instance.CustomDatabaseFolder) && Directory.Exists(SettingsFile.Instance.CustomDatabaseFolder))
+					return SettingsFile.Instance.CustomDatabaseFolder;
+
+				string appFolderName = "VideoDuplicateFinder";
+
+				// 2. macOS: ~/Library/Application Support/VideoDuplicateFinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+					string macPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(macPath)) Directory.CreateDirectory(macPath);
+					return macPath;
+				}
+
+				// 3. Linux / BSD / Unix: ~/.videoduplicatefinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || 
+					System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.FreeBSD)) {
+					string linuxPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + appFolderName.ToLower());
+					if (!Directory.Exists(linuxPath)) Directory.CreateDirectory(linuxPath);
+					return linuxPath;
+				}
+
+				// 4. Windows: %AppData%\VideoDuplicateFinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+					string winPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(winPath)) Directory.CreateDirectory(winPath);
+					return winPath;
+				}
+
+				// 5. Fallback: Application's local folder
+				return CoreUtils.CurrentFolder;
+			}
+		}
+
+		public string BackupScanResultsFile => Path.Combine(BaseAppDataFolder, "backup.scanresults");
+		
 
 		private readonly AvaloniaList<RowNode> Duplicates = new() { ResetBehavior = ResetBehavior.Reset }; //For TreeDataGrid
 		private readonly List<RowNode> _allGroups = new(); //Master list of all groups (for filtering)
