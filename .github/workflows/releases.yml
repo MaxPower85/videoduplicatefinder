@@ -93,6 +93,8 @@ jobs:
 
           # Ad-hoc sign everything (Must be done AFTER stripping and chmod)
           find "$APP_NAME/Contents" -type f \( -name "*.dylib" -or -name "*.dll" -or -perm +111 \) ! -name "*.pdb" ! -name "*.db" ! -name "*.json" ! -name "*.config" ! -name "*.xml" ! -name "*.txt" -exec codesign --force --sign - {} \;
+          # Seal the entire bundle including resources after individual files are signed
+          codesign --force --sign - "$APP_NAME"
           
           # Prepare DMG content
           cp -R "$APP_NAME" "dmgStaging/"
