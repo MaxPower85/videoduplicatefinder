@@ -19,10 +19,10 @@ jobs:
             name: win-x64
           - kind: macOS
             os: macos-14
-            target: osx-x64
+            target: osx-latest
             name: osx-x64
           - kind: macOSarm64
-            os: macos-14
+            os: macos-latest
             target: osx-arm64
             name: osx-arm64
           - kind: linuxarm64
@@ -63,6 +63,7 @@ jobs:
   
           # Setup environment based on architecture
           if [[ "${{ matrix.target }}" == "osx-x64" ]]; then
+            softwareupdate --install-rosetta --agree-to-license
             if [ ! -f /usr/local/bin/brew ]; then
                arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com)"
             fi
