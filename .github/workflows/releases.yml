@@ -112,54 +112,59 @@ jobs:
           codesign --force --sign - "$APP_NAME"
 
           
-          # Prepare DMG content
-          ditto --hfsCompression "$APP_NAME" "dmgStaging/$APP_NAME"
+          
+          # 1. Install dmgbuild tool
+          pip3 install dmgbuild
 
-          # Create shortcut with 'z' to force it to the last position
-          ln -s /Applications "dmgStaging/zApplications"
-        
-          # Create ReadMe.txt
-          printf "If the app doesn't open (Gatekeeper warning):\n\n1. Open Terminal\n2. Paste: xattr -d com.apple.quarantine \n3. That command should be followed by one space character \n4. Eject the mounted Disk Image and drag & drop the .dmg file there \n5. You'll get a path to the .dmg file and then you can press Return to remove the extended quarantine attributes\n\nAfter that you can reopen the Disk Image and run the .app or drag it to the Applications folder" > "dmgStaging/ReadMe.txt"
+          # 2. Prepare clean staging (No 'z' prefixes needed!)
+          rm -rf "$dmgStaging" && mkdir -p "$dmgStaging"
+          ditto --hfsCompression "$APP_NAME" "$dmgStaging/$APP_NAME"
+          ln -s /Applications "$dmgStaging/Applications"
+            
+          printf "If the app doesn't open (Gatekeeper warning):\n\n1. Open Terminal\n2. Paste: xattr -d com.apple.quarantine \n3. Add one space after the command\n4. Drag the .dmg file into Terminal\n5. Press Return/Enter\n\nNow you can run the app or drag it to Applications." > "$dmgStaging/ReadMe.txt"
 
-          # Create a temporary READ-WRITE DMG
-          hdiutil create -volname "VideoDuplicateFinder" -srcfolder "dmgStaging" -ov -format UDRW "temp.dmg"
-          
-          # Mount it to apply styling
-          device=$(hdiutil attach -readwrite -noverify "temp.dmg" | egrep '^/dev/' | sed 1q | awk '{print $1}')
-          sleep 4 # Wait for it to mount properly
-          
-          # AppleScript for icon size (140) and layout
-          osascript -e "tell application \"Finder\"
-              tell disk \"VideoDuplicateFinder\"
-                  open
-                  set current view of container window to icon view
-                  set icon size of icon view options of container window to 140
-                  set currentBounds to {400, 100, 950, 450} -- Slightly narrower for better centering
-                  set toolbar visible of container window to false
-                  set sidebar width of container window to 0
-                  set statusbar visible of container window to false
-                  set the bounds of container window to currentBounds
-                  set arrangement of icon view options of container window to arranged by name
-                  delay 2
-                  set arrangement of icon view options of container window to not arranged
-                  delay 1
-                  
-                  # Rename it back to Applications after it's already positioned last
-                  set name of alias file \"zApplications\" to \"Applications\"
-                  
-                  update items of container window
-                  delay 1
-                  close
-              end tell
-          end tell"
-          
-          # Finalize: Eject and convert to compressed UDZO
-          hdiutil detach "$device"
-          hdiutil convert "temp.dmg" -format ULMO -imagekey lzma-level=9 -o "${release_name}.dmg"          
-          rm "temp.dmg"
-          
+          # 3. Create dmgbuild settings file inside the script
+          cat <<EOF > dmg_settings.py
+          import os
+            
+          # Volume settings
+          volume_name = 'VideoDuplicateFinder'
+          format = 'ULMO' # Force LZMA compression
+          size = None
+            
+          # Files and locations (X, Y)
+          # README (Left), App (Center), Applications (Right)
+          files = [
+            ('$dmgStaging/$APP_NAME', '$APP_NAME'),
+            ('$dmgStaging/Applications', 'Applications'),
+            ('$dmgStaging/README.txt', 'README.txt')
+          ]
+            
+          icon_locations = {
+            'README.txt': (100, 160),
+            '$APP_NAME': (275, 160),
+            'Applications': (450, 160)
+          }
+            
+          # Window appearance
+          window_rect = ((400, 200), (550, 350)) # {x, y}, {width, height}
+          icon_size = 140
+            
+          # Hide UI elements (This hides the Tab Bar and Toolbar)
+          show_status_bar = False
+          show_tab_bar = False
+          show_toolbar = False
+          show_sidebar = False
+            
+          # Final touches
+          hide_extensions = ['README.txt']
+          EOF
+
+          # 4. Generate the final DMG using the Python settings
+          dmgbuild -s dmg_settings.py "VideoDuplicateFinder" "${release_name}.dmg"
+
           # Cleanup
-          rm -rf "$APP_NAME" "dmgStaging"
+          rm -rf "$APP_NAME" "$dmgStaging" dmg_settings.py
 
 
 
