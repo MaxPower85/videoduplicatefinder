@@ -134,22 +134,30 @@ jobs:
                   open
                   set current view of container window to icon view
                   set icon size of icon view options of container window to 148
-                  set currentBounds to {400, 100, 950, 450} -- Slightly narrower for better centering
+                  set currentBounds to {400, 100, 950, 450}
                   set toolbar visible of container window to false
                   set sidebar width of container window to 0
                   set statusbar visible of container window to false
+                  set the bounds of container window to currentBounds
+                  
+                  -- Arrange alphabetically first
                   set arrangement of icon view options of container window to arranged by name
                   delay 2
+                  
+                  -- Lock to manual mode
                   set arrangement of icon view options of container window to not arranged
                   delay 1
-                  set position of file \"README.txt\" to {140, 210}
-                  set position of item \"VideoDuplicateFinder.app\" to {275, 210}
-                  set position of alias file \"zApplications\" to {410, 210}
-                  
-                  # Rename it back to Applications after it's already positioned last
-                  set name of alias file \"zApplications\" to \"Applications\"
 
-                  # Extension will be hidden for a nicer look
+                  -- Shift icons down relatively by 20 pixels
+                  set allItems to every item
+                  repeat with i from 1 to count of allItems
+                      set thisItem to item i of allItems
+                      set {curX, curY} to position of thisItem
+                      set position of thisItem to {curX, curY + 20}
+                  end repeat
+                  
+                  -- Restore proper names
+                  set name of alias file \"zApplications\" to \"Applications\"
                   set extension hidden of file \"README.txt\" to true
                   
                   update items of container window
