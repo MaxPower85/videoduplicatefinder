@@ -22,22 +22,50 @@ namespace VDF.Core.Utils {
 	static class DatabaseUtils {
 		internal static HashSet<FileEntry> Database => DbWrapper.Entries;
 		internal static int DbVersion => DbWrapper.Version;
+		
 		static DatabaseWrapper DbWrapper = new();
 		internal static string? CustomDatabaseFolder;
-		
 
-		static string CurrentDatabasePath => Directory.Exists(CustomDatabaseFolder)
-					? FileUtils.SafePathCombine(CustomDatabaseFolder,
-					"ScannedFiles.db")
-					: FileUtils.SafePathCombine(CoreUtils.CurrentFolder,
-					"ScannedFiles.db");
-		static string TempDatabasePath => Directory.Exists(CustomDatabaseFolder)
-					? FileUtils.SafePathCombine(CustomDatabaseFolder,
-					"ScannedFiles_new.db")
-					: FileUtils.SafePathCombine(CoreUtils.CurrentFolder,
-					"ScannedFiles_new.db");
+		static string BaseDatabaseFolder {
+			get {
+				// 1. Priority: User-defined custom folder (if set in settings)
+				if (!string.IsNullOrEmpty(CustomDatabaseFolder) && Directory.Exists(CustomDatabaseFolder))
+					return CustomDatabaseFolder;
+
+				string appFolderName = "VideoDuplicateFinder";
+
+				// 2. macOS: ~/Library/Application Support/VideoDuplicateFinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+					string macPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(macPath)) Directory.CreateDirectory(macPath);
+					return macPath;
+				}
+
+				// 3. Linux / BSD / Unix: ~/.videoduplicatefinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || 
+					System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.FreeBSD)) {
+					string linuxPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + appFolderName.ToLower());
+					if (!Directory.Exists(linuxPath)) Directory.CreateDirectory(linuxPath);
+					return linuxPath;
+				}
+
+				// 4. Windows: %AppData%\VideoDuplicateFinder
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+					string winPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(winPath)) Directory.CreateDirectory(winPath);
+					return winPath;
+				}
+
+				// 5. Fallback: Original logic (application's local folder)
+				return CoreUtils.CurrentFolder;
+			}
+		}
+
+		static string CurrentDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles.db");
+		static string TempDatabasePath => FileUtils.SafePathCombine(BaseDatabaseFolder, "ScannedFiles_new.db");
 
 		internal static bool LoadDatabase() {
+
 			FileInfo databaseFile = new(TempDatabasePath);
 			if (!databaseFile.Exists)
 				databaseFile = new(CurrentDatabasePath);
