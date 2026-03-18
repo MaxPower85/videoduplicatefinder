@@ -121,30 +121,44 @@ jobs:
         
           # Create the final UDZO compressed .dmg
           
+          # Prepare DMG content with temporary name for ReadMe
+          ditto --hfsCompression "$APP_NAME" "dmgStaging/$APP_NAME"
+          ln -s /Applications "dmgStaging/Applications"
+          
+          # Use 'z' prefix so 'arranged by name' puts it last
+          printf "If the app doesn't open...\n" > "dmgStaging/zReadMe.txt"
+
           # Create a temporary READ-WRITE DMG
           hdiutil create -volname "VideoDuplicateFinder" -srcfolder "dmgStaging" -ov -format UDRW "temp.dmg"
           
           # Mount it to apply styling
           device=$(hdiutil attach -readwrite -noverify "temp.dmg" | egrep '^/dev/' | sed 1q | awk '{print $1}')
-          sleep 3 # Wait for it to mount
+          sleep 4 # Wait for it to mount properly
           
-          # Use AppleScript to set icon size (128) and arrange by name
+          # AppleScript for icon size (140) and layout
           osascript -e "tell application \"Finder\"
               tell disk \"VideoDuplicateFinder\"
                   open
                   set current view of container window to icon view
-                  set icon size of icon view options of container window to 128
-                  set the bounds of container window to {400, 100, 1000, 500}
+                  set icon size of icon view options of container window to 140
+                  set currentBounds to {400, 100, 950, 450} -- Slightly narrower for better centering
+                  set the bounds of container window to currentBounds
                   set arrangement of icon view options of container window to arranged by name
+                  
+                  # Rename it back to README.txt after it's already positioned last
+                  set name of file \"zReadMe.txt\" to \"README.txt\"
+                  
                   update items of container window
+                  delay 1
                   close
               end tell
           end tell"
           
           # Finalize: Eject and convert to compressed UDZO
           hdiutil detach "$device"
-          hdiutil convert "temp.dmg" -format UDZO -imagekey zlib-level=9 -o "${release_name}.dmg"
-          rm "temp.dmg"        
+          hdiutil convert "temp.dmg" -format ULMO -imagekey lzma-level=9 -o "${release_name}.dmg"          
+          rm "temp.dmg"
+          
           # Cleanup
           rm -rf "$APP_NAME" "dmgStaging"
 
