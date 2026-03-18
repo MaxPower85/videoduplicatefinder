@@ -22,7 +22,11 @@ namespace VDF.Core.Utils {
 		public static string CurrentFolder;
 		static CoreUtils() {
 			IsWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-			CurrentFolder = Path.GetDirectoryName(Environment.ProcessPath)!;
+			
+			string? exePath = Environment.ProcessPath;
+			if (string.IsNullOrEmpty(exePath)) exePath = AppDomain.CurrentDomain.BaseDirectory;
+			
+			CurrentFolder = Path.GetDirectoryName(exePath) ?? AppDomain.CurrentDomain.BaseDirectory;
 		}
 	}
 }
