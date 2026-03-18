@@ -18,11 +18,11 @@ jobs:
             target: win-x64
             name: win-x64
           - kind: macOS
-            os: macos-13
+            os: macos-15
             target: osx-x64
             name: osx-x64
           - kind: macOSarm64
-            os: macos-14
+            os: macos-15
             target: osx-arm64
             name: osx-arm64
           - kind: linuxarm64
@@ -60,21 +60,33 @@ jobs:
           mkdir -p "$APP_NAME/Contents/Frameworks"
           mkdir -p "$APP_NAME/Contents/Resources"
           mkdir -p "dmgStaging"
+  
+          # Setup environment based on architecture
+          if [[ "${{ matrix.target }}" == "osx-x64" ]]; then
+            if [ ! -f /usr/local/bin/brew ]; then
+               arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com)"
+            fi
+            arch -x86_64 /usr/local/bin/brew install ffmpeg dylibbundler
+            BREW_PREFIX="/usr/local"
+            BUNDLE_CMD="arch -x86_64 dylibbundler"
+          else
+            brew install ffmpeg dylibbundler
+            BREW_PREFIX="/opt/homebrew"
+            BUNDLE_CMD="dylibbundler"
+          fi
             
-          # Install FFmpeg and the library bundling tool
-          brew install ffmpeg dylibbundler
-
-          # Copy and strip binaries for smaller size
-          ditto $(brew --prefix)/bin/ffmpeg "$APP_NAME/Contents/MacOS/ffmpeg"
+          # Copy and strip binaries from the correct Brew path
+          ditto "$BREW_PREFIX/bin/ffmpeg" "$APP_NAME/Contents/MacOS/ffmpeg"
           chmod +w "$APP_NAME/Contents/MacOS/ffmpeg"
-          ditto $(brew --prefix)/bin/ffprobe "$APP_NAME/Contents/MacOS/ffprobe"
+          ditto "$BREW_PREFIX/bin/ffprobe" "$APP_NAME/Contents/MacOS/ffprobe"
           chmod +w "$APP_NAME/Contents/MacOS/ffprobe"
+          
           strip -x "$APP_NAME/Contents/MacOS/ffmpeg"
           strip -x "$APP_NAME/Contents/MacOS/ffprobe"
             
-          # Bundle all .dylib dependencies into the app
-          dylibbundler -od -b -x "$APP_NAME/Contents/MacOS/ffmpeg" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
-          dylibbundler -od -b -x "$APP_NAME/Contents/MacOS/ffprobe" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
+          # Bundle all .dylib dependencies into the app using the correct arch tool
+          $BUNDLE_CMD -od -b -x "$APP_NAME/Contents/MacOS/ffmpeg" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
+          $BUNDLE_CMD -od -b -x "$APP_NAME/Contents/MacOS/ffprobe" -d "$APP_NAME/Contents/Frameworks/" -p "@executable_path/../Frameworks/"
             
           # Strip libraries to save space
           for lib in "$APP_NAME/Contents/Frameworks/"*.dylib; do
@@ -90,31 +102,26 @@ jobs:
           chmod +x "$APP_NAME/Contents/MacOS/VDF.GUI"
           chmod +x "$APP_NAME/Contents/MacOS/ffmpeg"
           chmod +x "$APP_NAME/Contents/MacOS/ffprobe"
-
-          # Ad-hoc sign everything (Must be done AFTER stripping and chmod)
-          find "$APP_NAME/Contents" -type f \
-            \( -name "*.dylib" -o -name "*.dll" \) \
-            ! -name "ffmpeg" \
-            ! -name "ffprobe" \
-            ! -name "VDF.GUI" \
-            ! -name "createdump" \
-            -exec codesign --force --sign - {} \;
-          # Seal the entire bundle including resources after individual files are signed
+        
+          # Final step: Sign EVERYTHING inside the bundle to prevent integrity errors
+          find "$APP_NAME/Contents" -type f -exec codesign --force --sign - {} \;
+        
+          # Seal the entire bundle to satisfy Gatekeeper
           codesign --force --sign - "$APP_NAME"
           
           # Prepare DMG content
           cp -R "$APP_NAME" "dmgStaging/"
           ln -s /Applications "dmgStaging/Applications"
-
-          # Create ReadMe.txt using printf to avoid YAML indentation errors
+        
+          # Create ReadMe.txt
           printf "If the app doesn't open (Gatekeeper warning):\n1. Open Terminal\n2. Type: xattr -d com.apple.quarantine \n3. Add one space, then drag this .dmg here\n4. Press Enter and re-open the .dmg\n" > "dmgStaging/README.txt"
-
+        
           # Create the final UDZO compressed .dmg
           hdiutil create -volname "VideoDuplicateFinder" -srcfolder "dmgStaging" -ov -format UDZO "${release_name}.dmg"
-
+        
           # Cleanup
           rm -rf "$APP_NAME" "dmgStaging"
-
+        fi
 
           # Original Windows logic
           elif [ "${{ matrix.target }}" == "win-x64" ]; then
