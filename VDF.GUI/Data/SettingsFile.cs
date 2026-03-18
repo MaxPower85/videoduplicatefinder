@@ -38,50 +38,48 @@ namespace VDF.GUI.Data {
 			settingsPath = string.IsNullOrWhiteSpace(path) ? null : path;
 		}
 
+
+		// The settings file should go to the standard place where apps keep their data
+		// to avoid possible issues on modern operating systems
+		
 		static string ResolveSettingsPath(string? path) {
 			if (!string.IsNullOrWhiteSpace(path))
 				return path;
 			if (!string.IsNullOrWhiteSpace(settingsPath))
 				return settingsPath;
 
-			if (CanWriteToDirectory(CoreUtils.CurrentFolder))
-				return FileUtils.SafePathCombine(CoreUtils.CurrentFolder, "Settings.json");
-
+			// Always use the standard OS-specific folder
 			return FileUtils.SafePathCombine(GetDefaultSettingsFolder(), "Settings.json");
 		}
 
 		static string GetDefaultSettingsFolder() {
-			string? baseFolder;
-			if (CoreUtils.IsWindows) {
-				baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+			string appFolderName = "VideoDuplicateFinder";
+			string baseFolder;
+
+			// macOS: ~/Library/Application Support/VideoDuplicateFinder
+			if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+				baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
 			}
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
-				baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Preferences");
+			// Windows: %AppData%\VideoDuplicateFinder
+			else if (CoreUtils.IsWindows) {
+				baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
 			}
+			// Linux/BSD: ~/.videoduplicatefinder
 			else {
-				baseFolder = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-				if (string.IsNullOrWhiteSpace(baseFolder))
-					baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+				baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + appFolderName.ToLower());
 			}
 
-			var settingsFolder = Path.Combine(baseFolder, "VDF");
-			Directory.CreateDirectory(settingsFolder);
-			return settingsFolder;
+			if (!Directory.Exists(baseFolder))
+				Directory.CreateDirectory(baseFolder);
+
+			return baseFolder;
 		}
 
-		static bool CanWriteToDirectory(string path) {
-			try {
-				Directory.CreateDirectory(path);
-				var testPath = Path.Combine(path, $".vdf_write_test_{Guid.NewGuid():N}");
-				using var stream = new FileStream(testPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
-				stream.WriteByte(0);
-				return true;
-			}
-			catch {
-				return false;
-			}
-		}
+
+		
+
 		public class CustomActionCommands {
+
 			public string OpenItemInFolder { get; set; } = string.Empty;
 			public string OpenMultipleInFolder { get; set; } = string.Empty;
 			public string OpenItem { get; set; } = string.Empty;
