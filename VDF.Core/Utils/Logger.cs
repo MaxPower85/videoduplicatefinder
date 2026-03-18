@@ -25,12 +25,44 @@ namespace VDF.Core.Utils {
 		public delegate void LogEventHandler(string foo);
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 		static readonly object lockObject = new();
+
+		// The log should go to the standard place where apps keep their data
+		private static string LogPath {
+			get {
+				string appFolderName = "VideoDuplicateFinder";
+				string fileName = "VideoDuplicateFinderLog.txt";
+
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+					string macPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(macPath)) Directory.CreateDirectory(macPath);
+					return Path.Combine(macPath, fileName);
+				}
+
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || 
+					System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.FreeBSD)) {
+					string linuxPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "." + appFolderName.ToLower());
+					if (!Directory.Exists(linuxPath)) Directory.CreateDirectory(linuxPath);
+					return Path.Combine(linuxPath, fileName);
+				}
+
+				if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+					string winPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), appFolderName);
+					if (!Directory.Exists(winPath)) Directory.CreateDirectory(winPath);
+					return Path.Combine(winPath, fileName);
+				}
+
+				return Path.Combine(CoreUtils.CurrentFolder, fileName);
+			}
+		}
+
 		public void Info(string text) {
 			LogItemAdded?.Invoke($"{DateTime.Now:HH:mm:ss} => {text}");
 			lock (lockObject) {
-				File.AppendAllText(Path.Combine(CoreUtils.CurrentFolder, "log.txt"), $"{DateTime.Now:HH:mm:ss} => {text}{Environment.NewLine}");
+				File.AppendAllText(LogPath, $"{DateTime.Now:HH:mm:ss} => {text}{Environment.NewLine}");
 			}
 		}
+
+		
 		public void InsertSeparator(char separatorChar) {
 			LogItemAdded?.Invoke($"{Environment.NewLine}{new String(separatorChar, 150)}{Environment.NewLine}");
 		}
