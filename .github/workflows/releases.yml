@@ -63,7 +63,7 @@ jobs:
           if [[ "${{ matrix.target }}" == "osx-x64" ]]; then
             softwareupdate --install-rosetta --agree-to-license
             if [ ! -f /usr/local/bin/brew ]; then
-               arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com)"
+               arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             fi
             arch -x86_64 /usr/local/bin/brew install ffmpeg dylibbundler
             BREW_PREFIX="/usr/local"
