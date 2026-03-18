@@ -133,7 +133,7 @@ jobs:
               tell disk \"VideoDuplicateFinder\"
                   open
                   set current view of container window to icon view
-                  set icon size of icon view options of container window to 140
+                  set icon size of icon view options of container window to 148
                   set currentBounds to {400, 100, 950, 450} -- Slightly narrower for better centering
                   set toolbar visible of container window to false
                   set sidebar width of container window to 0
