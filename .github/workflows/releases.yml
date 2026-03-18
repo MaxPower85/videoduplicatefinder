@@ -18,7 +18,7 @@ jobs:
             target: win-x64
             name: win-x64
           - kind: macOS
-            os: macos-14
+            os: macos-13
             target: osx-x64
             name: osx-x64
           - kind: macOSarm64
