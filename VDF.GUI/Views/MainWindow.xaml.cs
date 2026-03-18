@@ -80,11 +80,8 @@ namespace VDF.GUI.Views {
 
 		async void ShowAlgoView() {
 
-			if (File.Exists(Directory.Exists(SettingsFile.Instance.CustomDatabaseFolder)
-					? FileUtils.SafePathCombine(SettingsFile.Instance.CustomDatabaseFolder,
-					"ScannedFiles.db")
-					: FileUtils.SafePathCombine(CoreUtils.CurrentFolder,
-					"ScannedFiles.db")))
+			// Using the new path that was set up for different systems
+			if (File.Exists(VDF.Core.Utils.DatabaseUtils.CurrentDatabasePath))
 					return;
 
 			while (!this.IsVisible) {
